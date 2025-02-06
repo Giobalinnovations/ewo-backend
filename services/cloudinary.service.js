@@ -46,41 +46,51 @@ const cloudinaryImageUpload = imageBuffer => {
 // Handle multiple image uploads
 const cloudinaryMultipleImageUpload = async files => {
   try {
-    const uploadPromises = files.map(file => {
-      return new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            upload_preset: secret.cloudinary_upload_preset,
-            transformation: [
-              {
-                quality: 'auto',
-                fetch_format: 'webp',
-                format: 'webp',
-                flags: 'lossy',
-              },
-            ],
-          },
-          (error, result) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve(result);
+    // Process each file one by one to prevent memory issues
+    const results = [];
+    for (const file of files) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              upload_preset: secret.cloudinary_upload_preset,
+              transformation: [
+                {
+                  quality: 'auto',
+                  fetch_format: 'webp',
+                  format: 'webp',
+                  flags: 'lossy',
+                },
+              ],
+            },
+            (error, result) => {
+              if (error) {
+                console.error('Error uploading file:', error);
+                reject(error);
+              } else {
+                resolve(result);
+              }
             }
-          }
-        );
+          );
 
-        const bufferStream = new Readable();
-        bufferStream.push(file.buffer);
-        bufferStream.push(null);
+          // Create a new readable stream for each file
+          const bufferStream = new Readable();
+          bufferStream.push(file.buffer);
+          bufferStream.push(null);
+          bufferStream.pipe(uploadStream);
+        });
 
-        bufferStream.pipe(uploadStream);
-      });
-    });
+        results.push(result);
+      } catch (error) {
+        console.error(`Error uploading file: ${file.originalname}`, error);
+        // Continue with next file even if one fails
+        continue;
+      }
+    }
 
-    const results = await Promise.all(uploadPromises);
     return results;
   } catch (error) {
-    console.error('Error uploading multiple images:', error);
+    console.error('Error in multiple image upload:', error);
     throw error;
   }
 };

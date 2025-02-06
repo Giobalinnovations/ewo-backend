@@ -42,13 +42,35 @@ const addMultipleImageCloudinary = async (req, res, next) => {
       });
     }
 
+    // Check if number of files exceeds limit
+    if (req.files.length > 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum 10 files can be uploaded at once',
+      });
+    }
+
+    // Log the files being processed
+    console.log(`Processing ${req.files.length} files for upload`);
+
     const results = await cloudinaryServices.cloudinaryMultipleImageUpload(
       req.files
     );
 
+    // Check if we got any successful uploads
+    if (!results || results.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to upload any images',
+      });
+    }
+
+    // Log successful uploads
+    console.log(`Successfully uploaded ${results.length} files`);
+
     res.status(200).json({
       success: true,
-      message: 'Images uploaded and optimized successfully',
+      message: `Successfully uploaded ${results.length} images`,
       data: results.map(result => ({
         url: result.secure_url,
         id: result.public_id,
@@ -58,7 +80,7 @@ const addMultipleImageCloudinary = async (req, res, next) => {
       })),
     });
   } catch (err) {
-    console.error('Error uploading multiple images:', err);
+    console.error('Error in multiple image upload controller:', err);
     next(err);
   }
 };

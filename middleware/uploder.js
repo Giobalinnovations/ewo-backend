@@ -4,13 +4,21 @@ const path = require('path');
 const uploader = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    const supportedImage = /png|jpg|jpeg|webp/;
-    const extension = path.extname(file.originalname);
-
-    if (supportedImage.test(extension)) {
+    // Check mime type
+    const supportedMimes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+    ];
+    if (supportedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Must be a png/jpg/jpeg/webp image'));
+      cb(
+        new Error(
+          `Unsupported file type. Only jpeg, jpg, png, and webp images are allowed`
+        )
+      );
     }
   },
   limits: {
